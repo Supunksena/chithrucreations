@@ -1,0 +1,74 @@
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Print Styles */
+@media print {
+    @page { 
+        margin: 0;
+        size: auto;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: white;
+    }
+    
+    /* Hide everything except receipt content */
+    body > * {
+        display: none !important;
+    }
+
+    #receipt-modal {
+        display: block !important;
+        position: relative !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    #receipt-content-wrapper {
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Hide the close/print buttons in print view */
+    #receipt-modal button {
+        display: none !important;
+    }
+    
+    #receipt-area {
+        display: block !important;
+        width: 80mm; /* Standard thermal receipt width */
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.2;
+    }
+}

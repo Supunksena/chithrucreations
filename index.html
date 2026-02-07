@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Communication Centre POS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dexie.js -->
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#475569',
+                        accent: '#f59e0b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="h-full flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Top Navigation -->
+    <nav class="bg-white border-b border-gray-200 shdow-sm z-20">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <i data-lucide="monitor" class="h-8 w-8 text-primary"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">CommCentre <span
+                                class="text-primary">POS</span></span>
+                    </div>
+                    <div class="hidden sm:ml-10 sm:flex sm:space-x-8" id="nav-links">
+                        <!-- Navigation items will be injected here or handled via JS -->
+                        <button onclick="router.navigate('dashboard')"
+                            class="nav-item border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            data-target="dashboard">
+                            Dashboard
+                        </button>
+                        <button onclick="router.navigate('pos')"
+                            class="nav-item border-primary text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            data-target="pos">
+                            POS / Billing
+                        </button>
+                        <button onclick="router.navigate('jobs')"
+                            class="nav-item border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            data-target="jobs">
+                            Jobs Tracker
+                        </button>
+                        <button onclick="router.navigate('inventory')"
+                            class="nav-item border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            data-target="inventory">
+                            Inventory
+                        </button>
+                        <button onclick="router.navigate('reports')"
+                            class="nav-item border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            data-target="reports">
+                            Reports
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="app.backupData()"
+                        class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+                        title="Backup Data">
+                        <i data-lucide="download" class="h-5 w-5"></i>
+                    </button>
+                    <div class="text-sm text-right hidden md:block">
+                        <div id="current-time" class="font-medium">00:00:00</div>
+                        <div id="current-date" class="text-xs text-gray-500">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-hidden relative bg-gray-50">
+
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section h-full overflow-y-auto p-6 hidden">
+            <h2 class="text-2xl font-bold mb-6">Dashboard Overview</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Stats Cards -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Today's Sales</p>
+                            <h3 class="text-2xl font-bold mt-2" id="dash-today-sales">Rs. 0.00</h3>
+                        </div>
+                        <div class="p-2 bg-blue-50 rounded-lg text-primary">
+                            <i data-lucide="dollar-sign" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Pending Jobs</p>
+                            <h3 class="text-2xl font-bold mt-2" id="dash-pending-jobs">0</h3>
+                        </div>
+                        <div class="p-2 bg-orange-50 rounded-lg text-accent">
+                            <i data-lucide="clock" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Low Stock Items</p>
+                            <h3 class="text-2xl font-bold mt-2" id="dash-low-stock">0</h3>
+                        </div>
+                        <div class="p-2 bg-red-50 rounded-lg text-danger">
+                            <i data-lucide="alert-triangle" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Completed Jobs</p>
+                            <h3 class="text-2xl font-bold mt-2" id="dash-completed-jobs">0</h3>
+                        </div>
+                        <div class="p-2 bg-green-50 rounded-lg text-success">
+                            <i data-lucide="check-circle" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Recent Sales -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold mb-4">Recent Sales</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3">ID</th>
+                                    <th class="px-4 py-3">Time</th>
+                                    <th class="px-4 py-3">Amount</th>
+                                    <th class="px-4 py-3">Method</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-recent-sales-list">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Active Jobs -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold mb-4">Active Jobs</h3>
+                    <div class="space-y-4" id="dash-active-jobs-list">
+                        <!-- JS Populated -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- POS View -->
+        <section id="view-pos" class="view-section h-full flex overflow-hidden">
+            <!-- Left Side: Products Grid -->
+            <div class="flex-1 flex flex-col h-full bg-gray-50 border-r border-gray-200">
+                <!-- Search & Categories -->
+                <div class="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
+                    <div class="relative mb-4">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                        </div>
+                        <input type="text" id="pos-search"
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                            placeholder="Search products, services...">
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="pos-categories">
+                        <button onclick="pos.filterCategory('all')"
+                            class="cat-btn px-4 py-1.5 bg-gray-800 text-white rounded-full text-sm font-medium whitespace-nowrap active-cat">All</button>
+                        <button onclick="pos.filterCategory('Stationery')"
+                            class="cat-btn px-4 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-50">Stationery</button>
+                        <button onclick="pos.filterCategory('Services')"
+                            class="cat-btn px-4 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-50">Services</button>
+                        <button onclick="pos.filterCategory('Custom Job')"
+                            class="cat-btn px-4 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-50">Custom
+                            Jobs</button>
+                    </div>
+                </div>
+
+                <!-- Products Content -->
+                <div class="flex-1 overflow-y-auto p-4 content-start">
+                    <div id="pos-products-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        <!-- Products will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Cart -->
+            <div class="w-96 bg-white flex flex-col h-full shadow-xl z-20">
+                <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i data-lucide="shopping-cart" class="h-5 w-5"></i> Current Sale
+                    </h2>
+                    <button onclick="pos.clearCart()" class="text-xs text-red-600 hover:text-red-800 font-medium">Clear
+                        All</button>
+                </div>
+
+                <!-- Cart Items -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-4" id="pos-cart-items">
+                    <!-- Cart items injected here -->
+                    <div class="text-center text-gray-400 py-10">Cart is empty</div>
+                </div>
+
+                <!-- Totals & Checkout -->
+                <div class="p-4 bg-gray-50 border-t border-gray-200 space-y-3">
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span>Subtotal</span>
+                        <span id="cart-subtotal">Rs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 items-center">
+                        <span>Discount</span>
+                        <input type="number" id="cart-discount" class="w-20 text-right p-1 border rounded text-sm"
+                            placeholder="0" onchange="pos.updateTotals()">
+                    </div>
+                    <div class="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
+                        <span>Total</span>
+                        <span id="cart-total">Rs. 0.00</span>
+                    </div>
+
+                    <button onclick="pos.checkout()"
+                        class="w-full py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-colors flex justify-center items-center gap-2">
+                        <i data-lucide="check" class="h-5 w-5"></i> Checkout & Print
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Jobs Tracker View -->
+        <section id="view-jobs" class="view-section h-full overflow-hidden flex flex-col hidden p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Job Tracker</h2>
+                <button onclick="jobs.openNewJobModal()"
+                    class="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2">
+                    <i data-lucide="plus" class="h-5 w-5"></i> New Job
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-x-auto">
+                <div class="grid grid-cols-4 gap-4 h-full min-w-[1000px]">
+                    <!-- Pending Column -->
+                    <div class="flex flex-col h-full bg-gray-100 rounded-xl p-3">
+                        <div class="px-2 py-2 flex justify-between items-center bg-gray-200 rounded-lg mb-3">
+                            <span class="font-bold text-gray-700">Pending</span>
+                            <span class="bg-gray-300 text-gray-700 text-xs px-2 py-0.5 rounded-full"
+                                id="count-pending">0</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-3" id="kanban-pending">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Designing Column -->
+                    <div class="flex flex-col h-full bg-blue-50 rounded-xl p-3">
+                        <div class="px-2 py-2 flex justify-between items-center bg-blue-100 rounded-lg mb-3">
+                            <span class="font-bold text-blue-700">Designing</span>
+                            <span class="bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full"
+                                id="count-designing">0</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-3" id="kanban-designing"></div>
+                    </div>
+
+                    <!-- Printing/Cutting Column -->
+                    <div class="flex flex-col h-full bg-orange-50 rounded-xl p-3">
+                        <div class="px-2 py-2 flex justify-between items-center bg-orange-100 rounded-lg mb-3">
+                            <span class="font-bold text-orange-700">Printing / Cutting</span>
+                            <span class="bg-orange-200 text-orange-800 text-xs px-2 py-0.5 rounded-full"
+                                id="count-printing">0</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-3" id="kanban-printing"></div>
+                    </div>
+
+                    <!-- Completed Column -->
+                    <div class="flex flex-col h-full bg-green-50 rounded-xl p-3">
+                        <div class="px-2 py-2 flex justify-between items-center bg-green-100 rounded-lg mb-3">
+                            <span class="font-bold text-green-700">Completed</span>
+                            <span class="bg-green-200 text-green-800 text-xs px-2 py-0.5 rounded-full"
+                                id="count-completed">0</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-3" id="kanban-completed">
+                            <!-- Show only recent completed here for performance? -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory View -->
+        <section id="view-inventory" class="view-section h-full overflow-hidden flex flex-col hidden p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Inventory Management</h2>
+                <div class="flex gap-2">
+                    <button onclick="inventory.importDummyData()"
+                        class="px-3 py-2 text-primary bg-blue-50 hover:bg-blue-100 rounded-lg font-medium text-sm">
+                        Load Demo Data
+                    </button>
+                    <button onclick="inventory.openAddModal()"
+                        class="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2">
+                        <i data-lucide="plus" class="h-5 w-5"></i> Add Product
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-gray-200 flex gap-4">
+                    <div class="relative flex-1 max-w-md">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-4 w-4 text-gray-400"></i>
+                        </div>
+                        <input type="text" id="inv-search"
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                            placeholder="Search inventory...">
+                    </div>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3">Product Name</th>
+                                <th class="px-6 py-3">Category</th>
+                                <th class="px-6 py-3">Cost Price</th>
+                                <th class="px-6 py-3">Sell Price</th>
+                                <th class="px-6 py-3">Stock</th>
+                                <th class="px-6 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-list" class="divide-y divide-gray-200">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports View -->
+        <section id="view-reports" class="view-section h-full overflow-hidden flex flex-col hidden p-6">
+            <h2 class="text-2xl font-bold mb-6">Reports & History</h2>
+            <div class="flex gap-4 mb-4">
+                <input type="date" id="report-date" class="border p-2 rounded">
+                <button onclick="reports.generate()" class="px-4 py-2 bg-secondary text-white rounded">Generate</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm">Total Revenue</p>
+                    <p class="text-2xl font-bold" id="report-revenue">Rs. 0.00</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm">Estimated Profit</p>
+                    <p class="text-2xl font-bold text-green-600" id="report-profit">Rs. 0.00</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm">Transaction Count</p>
+                    <p class="text-2xl font-bold" id="report-count">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-gray-200 font-bold">Transaction History</div>
+                <div class="overflow-auto flex-1 p-4">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3">Date</th>
+                                <th class="px-4 py-3">Type</th>
+                                <th class="px-4 py-3">Amount</th>
+                                <th class="px-4 py-3">Items</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-transactions"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modals -->
+
+    <!-- Add/Edit Product Modal -->
+    <div id="modal-product"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="modal-product-title">Add Product</h3>
+                <button onclick="inventory.closeModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"
+                        class="h-6 w-6"></i></button>
+            </div>
+            <form id="product-form" onsubmit="inventory.saveProduct(event)">
+                <input type="hidden" id="prod-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Barcode (Optional)</label>
+                        <input type="text" id="prod-barcode"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="Scan or type barcode">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="prod-name" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="prod-category"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                            <option value="Stationery">Stationery</option>
+                            <option value="Services">Services (Print/Copy)</option>
+                            <option value="Custom Job">Custom Job</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cost Price</label>
+                            <input type="number" id="prod-cost" step="0.01"
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Selling Price</label>
+                            <input type="number" id="prod-price" step="0.01" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Stock Quantity</label>
+                        <input type="number" id="prod-stock"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" value="0">
+                        <p class="text-xs text-gray-500 mt-1">Leave 0 or empty for unlimited services.</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" onclick="inventory.closeModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700">Save
+                        Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Job Modal -->
+    <div id="modal-job" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="modal-job-title">New Job</h3>
+                <button onclick="jobs.closeModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"
+                        class="h-6 w-6"></i></button>
+            </div>
+            <form id="job-form" onsubmit="jobs.saveJob(event)">
+                <input type="hidden" id="job-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Customer Name</label>
+                        <input type="text" id="job-customer" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Contact Number</label>
+                        <input type="tel" id="job-contact"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Job Description / Type</label>
+                        <input type="text" id="job-type" required placeholder="e.g. Wedding Cards, Graphic Design"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Total Amount</label>
+                            <input type="number" id="job-total" step="0.01" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                oninput="jobs.calcBalance()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Advance Paid</label>
+                            <input type="number" id="job-advance" step="0.01"
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" value="0"
+                                oninput="jobs.calcBalance()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Balance Due</label>
+                        <input type="number" id="job-balance" disabled
+                            class="mt-1 block w-full bg-gray-100 border border-gray-300 rounded-md shadow-sm p-2 font-bold text-gray-800">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Status</label>
+                            <select id="job-status"
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                                <option value="Pending">Pending</option>
+                                <option value="Designing">Designing</option>
+                                <option value="Printing">Printing/Cutting</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Deadline</label>
+                            <input type="date" id="job-deadline"
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" onclick="jobs.closeModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700">Save
+                        Job</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print Receipt Modal -->
+    <div id="receipt-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded shadow-lg max-w-sm w-full mx-auto" id="receipt-content-wrapper">
+            <div id="receipt-area" class="p-4 text-sm font-mono leading-tight bg-white">
+                <style>
+                    /* Print specific info usually hidden */
+                    @media print {
+                        body * {
+                            display: none;
+                        }
+
+                        #receipt-area,
+                        #receipt-area * {
+                            display: block;
+                        }
+
+                        #receipt-area {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            margin: 0;
+                            padding: 0;
+                        }
+                    }
+                </style>
+                <div class="text-center mb-2">
+                    <h2 class="font-bold text-lg uppercase">Communication Center</h2>
+                    <p class="text-xs">No. 123, Main Street, Town</p>
+                    <p class="text-xs">Tel: 011-2345678</p>
+                    <div class="border-b border-dashed border-gray-400 my-2"></div>
+                </div>
+                <div>
+                    <p>Date: <span id="rec-date"></span></p>
+                    <p>Bill No: <span id="rec-id"></span></p>
+                </div>
+                <div class="border-b border-dashed border-gray-400 my-2"></div>
+                <table class="w-full text-left mb-2">
+                    <tbody id="rec-items"></tbody>
+                </table>
+                <div class="border-b border-dashed border-gray-400 my-2"></div>
+                <div class="flex justify-between font-bold">
+                    <span>TOTAL</span>
+                    <span id="rec-total"></span>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                    <span>Discount</span>
+                    <span id="rec-discount"></span>
+                </div>
+                <div class="text-center mt-4 text-xs">
+                    <p>Thank you come again!</p>
+                </div>
+            </div>
+            <div class="bg-gray-100 p-3 flex justify-between rounded-b">
+                <button onclick="document.getElementById('receipt-modal').classList.add('hidden')"
+                    class="px-3 py-1 text-sm bg-white border border-gray-300 rounded">Close</button>
+                <button onclick="window.print()"
+                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded flex items-center gap-1"><i
+                        data-lucide="printer" class="w-4 h-4"></i> Print</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="app.js"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkfRVTsC4uePCEVosUYQCUr-mPADZNv84",
+            authDomain: "testing-bec61.firebaseapp.com",
+            projectId: "testing-bec61",
+            storageBucket: "testing-bec61.firebasestorage.app",
+            messagingSenderId: "387130083710",
+            appId: "1:387130083710:web:dc770608a9e2e30aa44b2f",
+            measurementId: "G-6PZLJBEWXQ"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+    </script>
+</body>
+
+</html>
